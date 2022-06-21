@@ -1,26 +1,36 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable, throwError } from 'rxjs';
 import { catchError, retry } from 'rxjs/operators';
+import { TokenStorageService } from './token-storage.service';
 
+const TOKEN_HEADER_KEY = 'authorization'; 
 
 @Injectable({
   providedIn: 'root'
 })
 export class HttpService {
-  private baseUrl : string = "https://jsonplaceholder.typicode.com"
-  constructor(private httpClient : HttpClient) { }
+  private baseUrl : string = "http://localhost:8080"
+
+  constructor(private httpClient : HttpClient, private tokenStorage: TokenStorageService) { }
+
+  private getHeaders() {
+    const token = this.tokenStorage.getToken() ?? ""
+    const authHeader = token ? 'Bearer ' + token : ""
+    const headres : HttpHeaders = new HttpHeaders().append('Content-Type', 'application/json')
+                                                  .append(TOKEN_HEADER_KEY, authHeader)
+    return headres
+  }
 
   public callGet(url : string, params : any, callBack : any) {
     const getUrl : string = this.baseUrl + url
-    params = params ?? {}
-    this.httpClient.get(getUrl, {params: params}).pipe(catchError(this.handleError)).subscribe(callBack)
+    this.httpClient.get(getUrl, {headers: this.getHeaders()}).pipe(catchError(this.handleError)).subscribe(callBack)
   }
 
   public callPost(url : string, body : any, callBack : any) {
-    const postUrl : string = this.baseUrl + url
     body = body ?? {}
-    this.httpClient.post(postUrl, body).pipe(catchError(this.handleError))
+    const postUrl : string = this.baseUrl + url
+    this.httpClient.post(postUrl, body, {headers: this.getHeaders()}).pipe(catchError(this.handleError)).subscribe(callBack)
   }
 
   handleError(error: any) {
@@ -36,5 +46,4 @@ export class HttpService {
       return errorMessage;
     });
   }
-
 }
